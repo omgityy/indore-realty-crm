@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Indore Realty CRM</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--danger:#dc2626;--green:#16a34a;--orange:#ea580c}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+header{background:#111827;color:#fff;padding:18px 16px 16px;position:sticky;top:0;z-index:5}header h1{margin:0;font-size:21px}header p{margin:4px 0 0;color:#cbd5e1;font-size:12px}
+nav{display:flex;gap:6px;background:#fff;padding:8px;position:sticky;top:76px;z-index:4;border-bottom:1px solid var(--line);overflow:auto}nav button{border:0;background:#f1f5f9;padding:9px 13px;border-radius:9px;white-space:nowrap;font-weight:600;color:#475569}nav button.active{background:var(--accent);color:#fff}
+main{max-width:760px;margin:auto;padding:14px 12px 90px}.tab{display:none}.tab.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}.card h3{margin:0 0 8px;font-size:16px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.muted{color:var(--muted);font-size:12px}
+label{display:block;font-size:12px;font-weight:700;margin:10px 0 5px;color:#475569}input,select,textarea{width:100%;border:1px solid #d1d5db;border-radius:9px;padding:10px;font:inherit;background:#fff}textarea{min-height:75px;resize:vertical}
+.btn{border:0;border-radius:9px;padding:10px 13px;font-weight:700;background:var(--accent);color:#fff}.btn.secondary{background:#e2e8f0;color:#334155}.btn.danger{background:#fee2e2;color:#991b1b}.btn.small{padding:7px 9px;font-size:12px}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.search{margin-bottom:10px}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#e0e7ff;color:#3730a3}.badge.green{background:#dcfce7;color:#166534}.badge.orange{background:#ffedd5;color:#9a3412}.badge.red{background:#fee2e2;color:#991b1b}
+.item{padding:10px 0;border-top:1px solid var(--line)}.item:first-child{border-top:0}
+.empty{text-align:center;padding:35px 15px;color:var(--muted)}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:flex-end;z-index:20}.modal.show{display:flex}.sheet{background:#fff;width:100%;max-width:760px;margin:auto;border-radius:18px 18px 0 0;padding:16px;max-height:92vh;overflow:auto}
+@media(min-width:700px){.modal{align-items:center}.sheet{border-radius:18px}}
+h2{font-size:18px;margin:6px 0 12px}
+</style>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#111827"></head>
+<body>
+<header><h1>🏢 Indore Realty CRM</h1><p>Leads • Follow-ups • Site Visits • Negotiations • Deals</p></header>
+<nav id="nav">
+<button class="active" onclick="tab('home',this)">Dashboard</button>
+<button onclick="tab('leads',this)">Leads</button>
+<button onclick="tab('follow',this)">Follow-ups</button>
+<button onclick="tab('history',this)">History</button>
+</nav>
+<main>
+<section id="home" class="tab active">
+<h2>Today's Overview</h2>
+<div class="grid">
+<div class="stat"><b id="sLeads">0</b><span>Total Leads</span></div><div class="stat"><b id="sToday">0</b><span>Follow-ups Today</span></div>
+<div class="stat"><b id="sHot">0</b><span>Hot / Interested</span></div><div class="stat"><b id="sVisit">0</b><span>Site Visits</span></div>
+</div>
+<div class="card"><div class="row"><h3>Today's Follow-ups</h3><button class="btn small" onclick="tabById('follow')">View all</button></div><div id="todayList"></div></div>
+<div class="card"><div class="row"><h3>Quick Add</h3><button class="btn" onclick="openLead()">+ Lead</button></div><p class="muted">Add the lead first. Then open it anytime to record every call, WhatsApp, meeting or site visit.</p></div>
+</section>
+
+<section id="leads" class="tab">
+<div class="row"><h2>All Leads</h2><button class="btn" onclick="openLead()">+ Add Lead</button></div>
+<input class="search" id="search" placeholder="Search name, company, phone, location..." oninput="renderLeads()">
+<div id="leadList"></div>
+</section>
+
+<section id="follow" class="tab">
+<h2>Follow-ups</h2>
+<div id="followList"></div>
+</section>
+
+<section id="history" class="tab">
+<h2>Recent Activity</h2><div id="historyList"></div>
+</section>
+</main>
+
+<div class="modal" id="leadModal"><div class="sheet">
+<div class="row"><h2 id="modalTitle">Add Lead</h2><button class="btn secondary small" onclick="closeModal()">✕</button></div>
+<input type="hidden" id="editId">
+<label>Client / Company Name *</label><input id="name" placeholder="ABC Pvt Ltd / Mr. Sharma">
+<label>Phone</label><input id="phone" type="tel" placeholder="98XXXXXXXX">
+<label>Requirement</label><input id="req" placeholder="Office / Shop / Clinic / Investment">
+<label>Preferred Location</label><input id="loc" placeholder="Vijay Nagar / AB Road / Palasia">
+<label>Budget</label><input id="budget" placeholder="₹90,000/month or ₹1.5 Cr">
+<label>Source</label><select id="source"><option>LinkedIn</option><option>99acres</option><option>Magicbricks</option><option>Reference</option><option>Cold Call</option><option>WhatsApp</option><option>Walk-in</option><option>Other</option></select>
+<label>Stage</label><select id="stage"><option>New</option><option>Contacted</option><option>Interested</option><option>Options Shared</option><option>Site Visit</option><option>Negotiation</option><option>Closed</option><option>Lost</option></select>
+<label>Next Follow-up</label><input id="next" type="date">
+<label>Notes</label><textarea id="notes" placeholder="Requirement, preferences, decision maker, etc."></textarea>
+<div class="actions"><button class="btn" onclick="saveLead()">Save Lead</button><button class="btn secondary" onclick="closeModal()">Cancel</button></div>
+</div></div>
+
+<div class="modal" id="detailModal"><div class="sheet">
+<div class="row"><h2 id="detailTitle"></h2><button class="btn secondary small" onclick="closeDetail()">✕</button></div>
+<div id="detailBody"></div>
+<div class="card"><h3>Add Interaction</h3>
+<label>Type</label><select id="intType"><option>Call</option><option>WhatsApp</option><option>Meeting</option><option>Site Visit</option><option>Email</option><option>Proposal</option><option>Negotiation</option></select>
+<label>Date</label><input id="intDate" type="date">
+<label>What happened?</label><textarea id="intNote" placeholder="What did the client say? What was shared? What is next?"></textarea>
+<label>Next Follow-up</label><input id="intNext" type="date">
+<button class="btn" style="margin-top:10px" onclick="addInteraction()">Save Interaction</button>
+</div>
+<div class="actions"><button class="btn secondary" onclick="editCurrent()">Edit Lead</button><button class="btn danger" onclick="deleteCurrent()">Delete Lead</button></div>
+</div></div>
+
+<script>
+const KEY='indore_realty_crm_v1';
+let db=JSON.parse(localStorage.getItem(KEY)||'{"leads":[],"interactions":[]}'), currentId=null;
+const today=()=>new Date().toISOString().slice(0,10);
+function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function tab(id,el){document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderAll()}
+function tabById(id){let b=[...document.querySelectorAll('nav button')].find(x=>x.textContent.toLowerCase().includes(id==='follow'?'follow':'lead'));tab(id,b)}
+function openLead(id=null){
+document.getElementById('leadModal').classList.add('show'); document.getElementById('editId').value=id||'';
+document.getElementById('modalTitle').textContent=id?'Edit Lead':'Add Lead';
+['name','phone','req','loc','budget','notes'].forEach(x=>document.getElementById(x).value='');
+document.getElementById('source').value='LinkedIn';document.getElementById('stage').value='New';document.getElementById('next').value=today();
+if(id){let l=db.leads.find(x=>x.id===id);if(l){for(let x of ['name','phone','req','loc','budget','notes'])document.getElementById(x).value=l[x]||'';document.getElementById('source').value=l.source||'Other';document.getElementById('stage').value=l.stage||'New';document.getElementById('next').value=l.next||''}}
+}
+function closeModal(){document.getElementById('leadModal').classList.remove('show')}
+function saveLead(){
+let id=document.getElementById('editId').value||Date.now().toString(), obj={id};
+['name','phone','req','loc','budget','source','stage','next','notes'].forEach(x=>obj[x]=document.getElementById(x).value.trim());
+if(!obj.name){alert('Please enter client/company name');return}
+let i=db.leads.findIndex(x=>x.id===id); if(i>=0)db.leads[i]=obj;else db.leads.unshift(obj); save();closeModal();openDetail(id)
+}
+function openDetail(id){
+currentId=id;let l=db.leads.find(x=>x.id===id);if(!l)return;
+document.getElementById('detailModal').classList.add('show');document.getElementById('detailTitle').textContent=l.name;
+document.getElementById('intDate').value=today();document.getElementById('intNext').value=l.next||today();document.getElementById('intNote').value='';
+renderDetail()
+}
+function closeDetail(){document.getElementById('detailModal').classList.remove('show');currentId=null}
+function renderDetail(){
+let l=db.leads.find(x=>x.id===currentId), ints=db.interactions.filter(x=>x.leadId===currentId).sort((a,b)=>b.date.localeCompare(a.date));
+let badge=l.stage==='Closed'?'green':(l.stage==='Lost'?'red':(l.stage==='Negotiation'||l.stage==='Site Visit'?'orange':''));
+document.getElementById('detailBody').innerHTML=`
+<div class="card"><div class="row"><strong>${esc(l.name)}</strong><span class="badge ${badge}">${esc(l.stage)}</span></div>
+<p class="muted">${esc(l.phone)} ${l.loc?'• '+esc(l.loc):''}</p>
+<p><b>Requirement:</b> ${esc(l.req)||'-'}<br><b>Budget:</b> ${esc(l.budget)||'-'}<br><b>Source:</b> ${esc(l.source)||'-'}<br><b>Next follow-up:</b> ${esc(l.next)||'-'}</p>
+<p>${esc(l.notes)||''}</p></div>
+<div class="card"><h3>Interaction History</h3>${ints.length?ints.map(x=>`<div class="item"><b>${esc(x.type)}</b> <span class="muted">${esc(x.date)}</span><div>${esc(x.note)}</div>${x.next?'<span class="muted">Next: '+esc(x.next)+'</span>':''}</div>`).join(''):'<div class="empty">No interaction yet.</div>'}</div>`;
+}
+function addInteraction(){
+if(!currentId)return;let note=document.getElementById('intNote').value.trim();if(!note){alert('Please write what happened');return}
+let x={id:Date.now().toString(),leadId:currentId,type:document.getElementById('intType').value,date:document.getElementById('intDate').value||today(),note,next:document.getElementById('intNext').value};
+db.interactions.push(x);let l=db.leads.find(x=>x.id===currentId);l.next=x.next;if(x.type==='Site Visit')l.stage='Site Visit';if(x.type==='Negotiation')l.stage='Negotiation';save();renderDetail();document.getElementById('intNote').value='';
+}
+function editCurrent(){let id=currentId;closeDetail();openLead(id)}
+function deleteCurrent(){if(confirm('Delete this lead and its history?')){db.leads=db.leads.filter(x=>x.id!==currentId);db.interactions=db.interactions.filter(x=>x.leadId!==currentId);save();closeDetail()}}
+function renderLeads(){
+let q=(document.getElementById('search')?.value||'').toLowerCase();
+let arr=db.leads.filter(l=>Object.values(l).join(' ').toLowerCase().includes(q));
+document.getElementById('leadList').innerHTML=arr.length?arr.map(l=>cardLead(l)).join(''):'<div class="empty">No leads yet. Tap + Add Lead.</div>'
+}
+function cardLead(l){let badge=l.stage==='Closed'?'green':(l.stage==='Lost'?'red':(l.stage==='Negotiation'||l.stage==='Site Visit'?'orange':''));return `<div class="card" onclick="openDetail('${l.id}')"><div class="row"><h3>${esc(l.name)}</h3><span class="badge ${badge}">${esc(l.stage)}</span></div><div class="muted">${esc(l.req)||'No requirement'} • ${esc(l.loc)||'No location'}</div><p style="margin:7px 0">${esc(l.phone)||''} ${l.budget?'• '+esc(l.budget):''}</p><div class="row"><span class="muted">Next: ${esc(l.next)||'—'}</span><button class="btn small" onclick="event.stopPropagation();openDetail('${l.id}')">Open</button></div></div>`}
+function renderFollow(){
+let arr=[...db.leads].filter(l=>l.next).sort((a,b)=>a.next.localeCompare(b.next));
+document.getElementById('followList').innerHTML=arr.length?arr.map(l=>`<div class="card" onclick="openDetail('${l.id}')"><div class="row"><strong>${esc(l.name)}</strong><span class="badge ${l.next<today()?'red':l.next===today()?'orange':'green'}">${l.next===today()?'TODAY':l.next<today()?'OVERDUE':l.next}</span></div><div class="muted">${esc(l.req)||''} • ${esc(l.loc)||''}</div><p>${esc(l.notes)||''}</p></div>`).join(''):'<div class="empty">No follow-ups.</div>'
+}
+function renderHistory(){
+let arr=[...db.interactions].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,50);
+document.getElementById('historyList').innerHTML=arr.length?arr.map(x=>{let l=db.leads.find(z=>z.id===x.leadId);return `<div class="card"><div class="row"><strong>${esc(l?.name||'Deleted lead')}</strong><span class="badge">${esc(x.type)}</span></div><div class="muted">${esc(x.date)}${x.next?' • Next: '+esc(x.next):''}</div><p>${esc(x.note)}</p></div>`}).join(''):'<div class="empty">No activity yet.</div>'
+}
+function renderAll(){
+document.getElementById('sLeads').textContent=db.leads.length;
+document.getElementById('sToday').textContent=db.leads.filter(l=>l.next===today()&&l.stage!=='Closed'&&l.stage!=='Lost').length;
+document.getElementById('sHot').textContent=db.leads.filter(l=>['Interested','Options Shared','Site Visit','Negotiation'].includes(l.stage)).length;
+document.getElementById('sVisit').textContent=db.interactions.filter(x=>x.type==='Site Visit').length;
+let t=db.leads.filter(l=>l.next===today()&&l.stage!=='Closed'&&l.stage!=='Lost');
+document.getElementById('todayList').innerHTML=t.length?t.map(l=>`<div class="item" onclick="openDetail('${l.id}')"><b>${esc(l.name)}</b> — ${esc(l.req)||'Requirement not added'}<div class="muted">${esc(l.loc)||''}</div></div>`).join(''):'<div class="empty">No follow-ups for today 🎉</div>';
+renderLeads();renderFollow();renderHistory()
+}
+renderAll();
+</script>
+</body>
+</html>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+}
+</script>
