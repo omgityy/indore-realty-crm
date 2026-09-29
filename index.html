@@ -10,7 +10,7 @@
 header{background:#111827;color:#fff;padding:18px 16px 16px;position:sticky;top:0;z-index:5}header h1{margin:0;font-size:21px}header p{margin:4px 0 0;color:#cbd5e1;font-size:12px}
 nav{display:flex;gap:6px;background:#fff;padding:8px;position:sticky;top:76px;z-index:4;border-bottom:1px solid var(--line);overflow:auto}nav button{border:0;background:#f1f5f9;padding:9px 13px;border-radius:9px;white-space:nowrap;font-weight:600;color:#475569}nav button.active{background:var(--accent);color:#fff}
 main{max-width:760px;margin:auto;padding:14px 12px 90px}.tab{display:none}.tab.active{display:block}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}.card h3{margin:0 0 8px;font-size:16px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.muted{color:var(--muted);font-size:12px}
 label{display:block;font-size:12px;font-weight:700;margin:10px 0 5px;color:#475569}input,select,textarea{width:100%;border:1px solid #d1d5db;border-radius:9px;padding:10px;font:inherit;background:#fff}textarea{min-height:75px;resize:vertical}
 .btn{border:0;border-radius:9px;padding:10px 13px;font-weight:700;background:var(--accent);color:#fff}.btn.secondary{background:#e2e8f0;color:#334155}.btn.danger{background:#fee2e2;color:#991b1b}.btn.small{padding:7px 9px;font-size:12px}
@@ -30,6 +30,8 @@ h2{font-size:18px;margin:6px 0 12px}
 <button onclick="tab('leads',this)">Leads</button>
 <button onclick="tab('follow',this)">Follow-ups</button>
 <button onclick="tab('history',this)">History</button>
+<button onclick="tab('smart',this)">🧠 Smart Entry</button>
+<button onclick="tab('data',this)">📥 Import / 📤 Export</button>
 </nav>
 <main>
 <section id="home" class="tab active">
@@ -56,7 +58,11 @@ h2{font-size:18px;margin:6px 0 12px}
 <section id="history" class="tab">
 <h2>Recent Activity</h2><div id="historyList"></div>
 </section>
-</main>
+<section id="smart" class="tab">
+<h2>🧠 Smart Entry</h2><div class="card"><p class="muted">Paste one natural message in English or Hinglish. Example: “Rahul Sharma, ABC Pvt Ltd. Vijay Nagar mein 1500 sq ft office chahiye. Budget 90k. LinkedIn se lead aayi. Aaj call hua, 3 options share kiye. 30 Sept ko follow-up karna hai.”</p><textarea id="smartText" rows="6" placeholder="Paste lead details here..."></textarea><div class="actions"><button class="btn" onclick="extractSmart()">Extract Details</button><button class="btn secondary" onclick="clearSmart()">Clear</button></div></div>
+<div class="card" id="smartPreview" style="display:none"><h3>Review Details</h3><div class="grid2">
+<label>Name<input id="sn"></label><label>Company<input id="sc"></label><label>Phone<input id="sp"></label><label>Requirement<input id="sr"></label><label>Location<input id="sl"></label><label>Size<input id="ss"></label><label>Budget<input id="sb"></label><label>Source<input id="so"></label><label>Stage<select id="st"><option>New</option><option>Contacted</option><option>Interested</option><option>Options Shared</option><option>Site Visit</option><option>Negotiation</option><option>Closed</option><option>Lost</option></select></label><label>Next Follow-up<input id="snext" type="date"></label></div><label>Discussion / Notes<textarea id="snotes" rows="3"></textarea></label><button class="btn" onclick="saveSmart()">Save Smart Lead</button></div></section>
+<section id="data" class="tab"><h2>📥 Import / 📤 Export</h2><div class="card"><h3>📤 Export</h3><p class="muted">Download all leads and interaction history as CSV.</p><button class="btn" onclick="exportCSV()">Export CRM CSV</button></div><div class="card"><h3>📥 Import</h3><p class="muted">Import a CSV exported from this CRM. Duplicate phone numbers will be skipped.</p><input type="file" id="importFile" accept=".csv,text/csv"><button class="btn" onclick="importCSV()">Import Leads</button></div></section></main>
 
 <div class="modal" id="leadModal"><div class="sheet">
 <div class="row"><h2 id="modalTitle">Add Lead</h2><button class="btn secondary small" onclick="closeModal()">✕</button></div>
@@ -65,6 +71,8 @@ h2{font-size:18px;margin:6px 0 12px}
 <label>Phone</label><input id="phone" type="tel" placeholder="98XXXXXXXX">
 <label>Requirement</label><input id="req" placeholder="Office / Shop / Clinic / Investment">
 <label>Preferred Location</label><input id="loc" placeholder="Vijay Nagar / AB Road / Palasia">
+<label>Company</label><input id="company" placeholder="Company name">
+<label>Size</label><input id="size" placeholder="e.g. 1500 sq ft">
 <label>Budget</label><input id="budget" placeholder="₹90,000/month or ₹1.5 Cr">
 <label>Source</label><select id="source"><option>LinkedIn</option><option>99acres</option><option>Magicbricks</option><option>Reference</option><option>Cold Call</option><option>WhatsApp</option><option>Walk-in</option><option>Other</option></select>
 <label>Stage</label><select id="stage"><option>New</option><option>Contacted</option><option>Interested</option><option>Options Shared</option><option>Site Visit</option><option>Negotiation</option><option>Closed</option><option>Lost</option></select>
@@ -97,14 +105,14 @@ function tabById(id){let b=[...document.querySelectorAll('nav button')].find(x=>
 function openLead(id=null){
 document.getElementById('leadModal').classList.add('show'); document.getElementById('editId').value=id||'';
 document.getElementById('modalTitle').textContent=id?'Edit Lead':'Add Lead';
-['name','phone','req','loc','budget','notes'].forEach(x=>document.getElementById(x).value='');
+['name','company','phone','req','loc','size','budget','notes'].forEach(x=>document.getElementById(x).value='');
 document.getElementById('source').value='LinkedIn';document.getElementById('stage').value='New';document.getElementById('next').value=today();
-if(id){let l=db.leads.find(x=>x.id===id);if(l){for(let x of ['name','phone','req','loc','budget','notes'])document.getElementById(x).value=l[x]||'';document.getElementById('source').value=l.source||'Other';document.getElementById('stage').value=l.stage||'New';document.getElementById('next').value=l.next||''}}
+if(id){let l=db.leads.find(x=>x.id===id);if(l){for(let x of ['name','company','phone','req','loc','size','budget','notes'])document.getElementById(x).value=l[x]||'';document.getElementById('source').value=l.source||'Other';document.getElementById('stage').value=l.stage||'New';document.getElementById('next').value=l.next||''}}
 }
 function closeModal(){document.getElementById('leadModal').classList.remove('show')}
 function saveLead(){
 let id=document.getElementById('editId').value||Date.now().toString(), obj={id};
-['name','phone','req','loc','budget','source','stage','next','notes'].forEach(x=>obj[x]=document.getElementById(x).value.trim());
+['name','company','phone','req','loc','size','budget','source','stage','next','notes'].forEach(x=>obj[x]=document.getElementById(x).value.trim());
 if(!obj.name){alert('Please enter client/company name');return}
 let i=db.leads.findIndex(x=>x.id===id); if(i>=0)db.leads[i]=obj;else db.leads.unshift(obj); save();closeModal();openDetail(id)
 }
@@ -157,7 +165,20 @@ renderLeads();renderFollow();renderHistory()
 }
 renderAll();
 </script>
-</body>
+<script>
+function clearSmart(){document.getElementById('smartText').value='';document.getElementById('smartPreview').style.display='none'}
+function smartDate(t){let m=t.match(/(\d{1,2})\s*(?:st|nd|rd|th)?\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)/i);if(m){let months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,sept:8,oct:9,nov:10,dec:11};let d=new Date();d.setMonth(months[m[2].toLowerCase()],+m[1]);if(d<new Date(new Date().setHours(0,0,0,0)))d.setFullYear(d.getFullYear()+1);return d.toISOString().slice(0,10)}let f=t.match(/(?:on|follow[- ]?up)\s*(?:the\s*)?(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/i);if(f){let y=f[3]?+f[3]:(new Date().getFullYear());if(y<100)y+=2000;return new Date(y,+f[2]-1,+f[1]).toISOString().slice(0,10)}return ''}
+function extractSmart(){let t=document.getElementById('smartText').value.trim();if(!t){alert('Paste lead details first');return}let name='',company='',phone='',req='',loc='',size='',budget='',source='Other',stage='New';let pm=t.match(/(?:phone|mobile|contact|mob)\s*[:\-]?\s*(\+?\d[\d\s-]{8,})/i)||t.match(/\b[6-9]\d{9}\b/);if(pm)phone=pm[1].replace(/\s|-/g,'');let sm=t.match(/^\s*([^,.\n]+?)(?:,|\s+from\s+)/i);if(sm)name=sm[1].trim();let cm=t.match(/(?:company|firm|co\.?|at)\s*[:\-]?\s*([^,.\n]+?)(?:\.|,|\s+(?:in|from|needs|wants|looking))/i);if(cm)company=cm[1].trim();let lm=t.match(/(?:in|at|near|location)\s+([A-Za-z][A-Za-z0-9 &'\-]{2,40}?)(?=\s+(?:mein|me|for|office|shop|space|budget|chahiye|needs|wants|with|and)|[,.]|$)/i);if(lm)loc=lm[1].trim();let siz=t.match(/(\d[\d,]*)\s*(sq\.?\s*ft|sqft|square feet)/i);if(siz)size=siz[1].replace(/,/g,'')+' sq ft';let bm=t.match(/(?:budget|upto|up to)\s*(?:of|is|:)?\s*(?:₹|rs\.?|inr)?\s*([\d,.]+)\s*(lakh|lac|k|thousand|cr|crore)?/i);if(bm){let n=parseFloat(bm[1].replace(/,/g,'')),u=(bm[2]||'').toLowerCase();if(u==='lakh'||u==='lac')n*=100000;else if(u==='k'||u==='thousand')n*=1000;else if(u==='cr'||u==='crore')n*=10000000;budget='₹'+Math.round(n).toLocaleString('en-IN')}else{let br=t.match(/₹\s*([\d,.]+\s*(?:lakh|lac|k|cr|crore)?)/i);if(br)budget='₹'+br[1]}
+for(let x of ['LinkedIn','99acres','Magicbricks','Reference','Cold Call','WhatsApp','Walk-in'])if(t.toLowerCase().includes(x.toLowerCase())){source=x;break}if(/negotiat/i.test(t))stage='Negotiation';else if(/site visit|visit scheduled/i.test(t))stage='Site Visit';else if(/option[s]? shared|shared \d+ option/i.test(t))stage='Options Shared';else if(/interested/i.test(t))stage='Interested';else if(/call|contacted|spoke/i.test(t))stage='Contacted';let reqm=t.match(/(?:needs?|wants?|chahiye|looking for)\s+(?:an?\s+)?(.+?)(?=\.|,|\s+budget\b|\s+in\s+)/i);if(reqm)req=reqm[1].trim();else if(/office/i.test(t))req='Office';let date=smartDate(t);document.getElementById('sn').value=name;document.getElementById('sc').value=company;document.getElementById('sp').value=phone;document.getElementById('sr').value=req;document.getElementById('sl').value=loc;document.getElementById('ss').value=size;document.getElementById('sb').value=budget;document.getElementById('so').value=source;document.getElementById('st').value=stage;document.getElementById('snext').value=date||today();document.getElementById('snotes').value=t;document.getElementById('smartPreview').style.display='block'}
+function saveSmart(){let id=Date.now().toString(),obj={id,name:sn.value.trim(),company:sc.value.trim(),phone:sp.value.trim(),req:sr.value.trim(),loc:sl.value.trim(),size:ss.value.trim(),budget:sb.value.trim(),source:so.value,stage:st.value,next:snext.value,notes:snotes.value.trim()};if(!obj.name){alert('Please enter name');return}db.leads.unshift(obj);db.interactions.unshift({id:'i'+Date.now(),leadId:id,date:today(),type:'Smart Entry',note:obj.notes,next:obj.next});save();clearSmart();tabById('leads');alert('Smart lead saved successfully')}
+function csvCell(v){return '"'+String(v??'').replace(/"/g,'""').replace(/\n/g,' ')+'"'}
+function exportCSV(){let rows=[['ID','Name','Company','Phone','Requirement','Location','Size','Budget','Source','Stage','Next Follow-up','Notes','Interaction History']];db.leads.forEach(l=>{let h=db.interactions.filter(i=>i.leadId===l.id).map(i=>`${i.date} | ${i.type} | ${i.note||''} | Next: ${i.next||''}`).join(' || ');rows.push([l.id,l.name,l.company,l.phone,l.req,l.loc,l.size,l.budget,l.source,l.stage,l.next,l.notes,h])});let csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='Indore_Realty_CRM_Export_'+today()+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function parseCSV(t){let rows=[],row=[],cell='',q=false;for(let i=0;i<t.length;i++){let c=t[i],n=t[i+1];if(c==='"'&&q&&n==='"'){cell+='"';i++;continue}if(c==='"'){q=!q;continue}if(c===','&&!q){row.push(cell);cell='';continue}if((c==='\n'||c==='\r')&&!q){if(c==='\r'&&n==='\n')i++;row.push(cell);if(row.some(x=>x.trim()))rows.push(row);row=[];cell='';continue}cell+=c}if(cell||row.length){row.push(cell);rows.push(row)}return rows}
+function importCSV(){let f=document.getElementById('importFile').files[0];if(!f){alert('Choose a CSV file first');return}let r=new FileReader();r.onload=()=>{let rows=parseCSV(r.result.replace(/^\ufeff/,''));if(rows.length<2){alert('CSV has no lead data');return}let h=rows[0].map(x=>x.trim().toLowerCase()),idx=k=>h.indexOf(k.toLowerCase()),added=0,skipped=0;for(let a=1;a<rows.length;a++){let v=rows[a],phone=(v[idx('Phone')]||'').replace(/\D/g,'');if(!phone && !(v[idx('Name')]||'').trim())continue;if(phone&&db.leads.some(l=>(l.phone||'').replace(/\D/g,'')===phone)){skipped++;continue}let id=(v[idx('ID')]||('imp'+Date.now()+a)).trim();if(db.leads.some(l=>l.id===id))id='imp'+Date.now()+a;db.leads.push({id,name:(v[idx('Name')]||'').trim(),company:(v[idx('Company')]||'').trim(),phone,req:(v[idx('Requirement')]||'').trim(),loc:(v[idx('Location')]||'').trim(),size:(v[idx('Size')]||'').trim(),budget:(v[idx('Budget')]||'').trim(),source:(v[idx('Source')]||'Other').trim(),stage:(v[idx('Stage')]||'New').trim(),next:(v[idx('Next Follow-up')]||'').trim(),notes:(v[idx('Notes')]||'').trim()});added++}save();alert(`Import complete: ${added} added, ${skipped} duplicates skipped.`);document.getElementById('importFile').value=''};r.readAsText(f)}
+</script>
+<script>
+function tabById(id){let b=[...document.querySelectorAll('#nav button')].find(x=>x.getAttribute('onclick')&&x.getAttribute('onclick').includes("'"+id+"'"));if(b)tab(id,b)}
+</script></body>
 </html>
 <script>
 if ("serviceWorker" in navigator) {
