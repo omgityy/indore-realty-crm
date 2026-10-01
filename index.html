@@ -30,7 +30,7 @@ h2{font-size:18px;margin:6px 0 12px}
 <button onclick="tab('leads',this)">Leads</button>
 <button onclick="tab('follow',this)">Follow-ups</button>
 <button onclick="tab('history',this)">History</button>
-<button onclick="tab('smart',this)">🧠 Smart Entry</button>
+
 <button onclick="tab('data',this)">📥 Import / 📤 Export</button>
 </nav>
 <main>
@@ -47,6 +47,12 @@ h2{font-size:18px;margin:6px 0 12px}
 <section id="leads" class="tab">
 <div class="row"><h2>All Leads</h2><button class="btn" onclick="openLead()">+ Add Lead</button></div>
 <input class="search" id="search" placeholder="Search name, company, phone, location..." oninput="renderLeads()">
+<select id="leadStatusFilter" class="search" onchange="renderLeads()" style="margin-top:8px">
+<option value="active">Active Leads</option>
+<option value="Closed">Closed Leads</option>
+<option value="Lost">Lost Leads</option>
+<option value="all">All Leads</option>
+</select>
 <div id="leadList"></div>
 </section>
 
@@ -58,10 +64,7 @@ h2{font-size:18px;margin:6px 0 12px}
 <section id="history" class="tab">
 <h2>Recent Activity</h2><div id="historyList"></div>
 </section>
-<section id="smart" class="tab">
-<h2>🧠 Smart Entry</h2><div class="card"><p class="muted">Paste one natural message in English or Hinglish. Example: “Rahul Sharma, ABC Pvt Ltd. Vijay Nagar mein 1500 sq ft office chahiye. Budget 90k. LinkedIn se lead aayi. Aaj call hua, 3 options share kiye. 30 Sept ko follow-up karna hai.”</p><textarea id="smartText" rows="6" placeholder="Paste lead details here..."></textarea><div class="actions"><button class="btn" onclick="extractSmart()">Extract Details</button><button class="btn secondary" onclick="clearSmart()">Clear</button></div></div>
-<div class="card" id="smartPreview" style="display:none"><h3>Review Details</h3><div class="grid2">
-<label>Name<input id="sn"></label><label>Company<input id="sc"></label><label>Phone<input id="sp"></label><label>Requirement<input id="sr"></label><label>Location<input id="sl"></label><label>Size<input id="ss"></label><label>Budget<input id="sb"></label><label>Source<input id="so"></label><label>Stage<select id="st"><option>New</option><option>Contacted</option><option>Interested</option><option>Options Shared</option><option>Site Visit</option><option>Negotiation</option><option>Closed</option><option>Lost</option></select></label><label>Next Follow-up<input id="snext" type="date"></label></div><label>Discussion / Notes<textarea id="snotes" rows="3"></textarea></label><button class="btn" onclick="saveSmart()">Save Smart Lead</button></div></section>
+
 <section id="data" class="tab"><h2>📥 Import / 📤 Export</h2><div class="card"><h3>📤 Export</h3><p class="muted">Download all leads and interaction history as CSV.</p><button class="btn" onclick="exportCSV()">Export CRM CSV</button></div><div class="card"><h3>📥 Import</h3><p class="muted">Import a CSV exported from this CRM. Duplicate phone numbers will be skipped.</p><input type="file" id="importFile" accept=".csv,text/csv"><button class="btn" onclick="importCSV()">Import Leads</button></div></section></main>
 
 <div class="modal" id="leadModal"><div class="sheet">
@@ -142,13 +145,20 @@ function editCurrent(){let id=currentId;closeDetail();openLead(id)}
 function deleteCurrent(){if(confirm('Delete this lead and its history?')){db.leads=db.leads.filter(x=>x.id!==currentId);db.interactions=db.interactions.filter(x=>x.leadId!==currentId);save();closeDetail()}}
 function renderLeads(){
 let q=(document.getElementById('search')?.value||'').toLowerCase();
-let arr=db.leads.filter(l=>Object.values(l).join(' ').toLowerCase().includes(q));
-document.getElementById('leadList').innerHTML=arr.length?arr.map(l=>cardLead(l)).join(''):'<div class="empty">No leads yet. Tap + Add Lead.</div>'
+let filter=document.getElementById('leadStatusFilter')?.value||'active';
+let arr=db.leads.filter(l=>{
+let closed=l.stage==='Closed', lost=l.stage==='Lost';
+if(filter==='active'&&(closed||lost))return false;
+if(filter==='Closed'&&!closed)return false;
+if(filter==='Lost'&&!lost)return false;
+return Object.values(l).join(' ').toLowerCase().includes(q);
+});
+document.getElementById('leadList').innerHTML=arr.length?arr.map(l=>cardLead(l)).join(''):'<div class="empty">No leads found in this filter.</div>';
 }
 function cardLead(l){let badge=l.stage==='Closed'?'green':(l.stage==='Lost'?'red':(l.stage==='Negotiation'||l.stage==='Site Visit'?'orange':''));return `<div class="card" onclick="openDetail('${l.id}')"><div class="row"><h3>${esc(l.name)}</h3><span class="badge ${badge}">${esc(l.stage)}</span></div><div class="muted">${esc(l.req)||'No requirement'} • ${esc(l.loc)||'No location'}</div><p style="margin:7px 0">${esc(l.phone)||''} ${l.budget?'• '+esc(l.budget):''}</p><div class="row"><span class="muted">Next: ${esc(l.next)||'—'}</span><button class="btn small" onclick="event.stopPropagation();openDetail('${l.id}')">Open</button></div></div>`}
 function renderFollow(){
-let arr=[...db.leads].filter(l=>l.next).sort((a,b)=>a.next.localeCompare(b.next));
-document.getElementById('followList').innerHTML=arr.length?arr.map(l=>`<div class="card" onclick="openDetail('${l.id}')"><div class="row"><strong>${esc(l.name)}</strong><span class="badge ${l.next<today()?'red':l.next===today()?'orange':'green'}">${l.next===today()?'TODAY':l.next<today()?'OVERDUE':l.next}</span></div><div class="muted">${esc(l.req)||''} • ${esc(l.loc)||''}</div><p>${esc(l.notes)||''}</p></div>`).join(''):'<div class="empty">No follow-ups.</div>'
+let arr=[...db.leads].filter(l=>l.next&&l.stage!=='Closed'&&l.stage!=='Lost').sort((a,b)=>a.next.localeCompare(b.next));
+document.getElementById('followList').innerHTML=arr.length?arr.map(l=>`<div class="card" onclick="openDetail('${l.id}')"><div class="row"><strong>${esc(l.name)}</strong><span class="badge ${l.next<today()?'red':l.next===today()?'orange':'green'}">${l.next===today()?'TODAY':l.next<today()?'OVERDUE':l.next}</span></div><div class="muted">${esc(l.req)||''} • ${esc(l.loc)||''}</div><p>${esc(l.notes)||''}</p></div>`).join(''):'<div class="empty">No active follow-ups.</div>';
 }
 function renderHistory(){
 let arr=[...db.interactions].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,50);
@@ -184,4 +194,18 @@ function tabById(id){let b=[...document.querySelectorAll('#nav button')].find(x=
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
 }
+</script>
+<script>
+function applyStageFollowupRule(){
+ const s=document.getElementById('stage'), n=document.getElementById('next');
+ if(!s||!n)return;
+ const done=s.value==='Closed'||s.value==='Lost';
+ n.disabled=done;
+ if(done)n.value='';
+}
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='stage')applyStageFollowupRule();});
+const __openLead=openLead;
+openLead=function(id=null){__openLead(id);setTimeout(applyStageFollowupRule,0);};
+const __saveLead=saveLead;
+saveLead=function(){applyStageFollowupRule();__saveLead();};
 </script>
